@@ -1,73 +1,53 @@
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
-from sqlalchemy.orm import validates
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy_serializer import SerializerMixin
+#!/usr/bin/env python3
 
-metadata = MetaData(
-    naming_convention={
-        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    }
-)
+from models import db, Restaurant, Pizza, RestaurantPizza
+from extensions import db
 
-db = SQLAlchemy(metadata=metadata)
-
-
-class Restaurant(db.Model, SerializerMixin):
-    __tablename__ = "restaurants"
-
+class Restaurant(db.Model):
+    __tablename__ = 'restaurants'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     address = db.Column(db.String)
 
-    # add relationship
-    restaurant_pizzas = db.relationship('RestaurantPizza', back_populates='restaurant', cascade='all, delete-orphan')
-    pizzas = association_proxy('restaurant_pizzas', 'pizza')
 
-    # add serialization rules
-    serialize_rules = ('-restaurant_pizzas.restaurant',)
+def add_sample_data():
+    """Add sample data to the database"""
+    with app.app_context():
+        print("Adding sample data...")
+        
+        # Create restaurants
+        restaurant1 = Restaurant(name="Karen's Pizza Shack", address="address1")
+        restaurant2 = Restaurant(name="Sanjay's Pizza", address="address2")
+        restaurant3 = Restaurant(name="Kiki's Pizza", address="address3")
+        
+        db.session.add_all([restaurant1, restaurant2, restaurant3])
+        db.session.commit()
+        print("Added restaurants")
+        
+        # Create pizzas
+        pizza1 = Pizza(name="Emma", ingredients="Dough, Tomato Sauce, Cheese")
+        pizza2 = Pizza(name="Geri", ingredients="Dough, Tomato Sauce, Cheese, Pepperoni")
+        pizza3 = Pizza(name="Melanie", ingredients="Dough, Sauce, Ricotta, Red peppers, Mustard")
+        
+        db.session.add_all([pizza1, pizza2, pizza3])
+        db.session.commit()
+        print("Added pizzas")
+        
+        # Create restaurant-pizza relationships
+        rp1 = RestaurantPizza(price=1, restaurant_id=restaurant1.id, pizza_id=pizza1.id)
+        rp2 = RestaurantPizza(price=15, restaurant_id=restaurant2.id, pizza_id=pizza2.id)
+        rp3 = RestaurantPizza(price=20, restaurant_id=restaurant3.id, pizza_id=pizza3.id)
+        
+        db.session.add_all([rp1, rp2, rp3])
+        db.session.commit()
+        print("Added restaurant-pizza relationships")
+        
+        # Verify data
+        print(f"Total restaurants: {Restaurant.query.count()}")
+        print(f"Total pizzas: {Pizza.query.count()}")
+        print(f"Total restaurant-pizza relationships: {RestaurantPizza.query.count()}")
+        
+        print("Sample data added successfully!")
 
-    def __repr__(self):
-        return f"<Restaurant {self.name}>"
-
-
-class Pizza(db.Model, SerializerMixin):
-    __tablename__ = "pizzas"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    ingredients = db.Column(db.String)
-
-    # add relationship
-    restaurant_pizzas = db.relationship('RestaurantPizza', back_populates='pizza', cascade='all, delete-orphan')
-    restaurants = association_proxy('restaurant_pizzas', 'restaurant')
-    
-    # add serialization rules
-    serialize_rules = ('-restaurant_pizzas.pizza',)
-
-    def __repr__(self):
-        return f"<Pizza {self.name}, {self.ingredients}>"
-
-
-class RestaurantPizza(db.Model, SerializerMixin):
-    __tablename__ = "restaurant_pizzas"
-
-    id = db.Column(db.Integer, primary_key=True)
-    price = db.Column(db.Integer, nullable=False)
-
-    # add relationships
-    restaurant = db.relationship('Restaurant', back_populates='restaurant_pizzas')
-    pizza = db.relationship('Pizza', back_populates='restaurant_pizzas')
-
-    # add serialization rules
-    serialize_rules = ('-restaurant.restaurant_pizzas', '-pizza.restaurant_pizzas')
-
-    # add validation
-    @validates('price')
-    def validate_price(self, key, price):
-        if not (1 <= price <= 30):
-            raise ValueError("Price must be between 1 and 30")
-        return price
-    
-    def __repr__(self):
-        return f"<RestaurantPizza ${self.price}>"
+if __name__ == '__main__':
+    add_sample_data()
