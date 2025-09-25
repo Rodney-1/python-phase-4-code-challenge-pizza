@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # server/app.py
-from flask import Flask
+import os
+from flask import Flask, request, make_response
+from flask_migrate import Migrate
 from extensions import db
 from models import Restaurant, Pizza, RestaurantPizza
 
@@ -96,7 +98,7 @@ def create_restaurant_pizza():
         
     except ValueError as e:
         db.session.rollback()
-        return make_response({'errors': [str(e)]}, 400)
+        return make_response({'errors': ["validation errors"]}, 400)
     except Exception as e:
         db.session.rollback()
         return make_response({'errors': ['Failed to create RestaurantPizza']}, 400)
